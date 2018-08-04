@@ -80,7 +80,7 @@ public class DatabaseAssistant {
         return rate;
     }
 
-    private void fillInTable(String jsonString) throws JSONException {
+    public void fillInTable(String jsonString) throws JSONException {
         JSONArray jsonBody = new JSONArray(jsonString);
         boolean firstRun = Config.newInstance(context.getApplicationContext()).isFirstRun();
 
@@ -120,6 +120,8 @@ public class DatabaseAssistant {
         Cursor cursor = database.query(TABLE_CURRENCIES, null, null, null, null, null, null);
         if (cursor.moveToNext()) {
             Config.newInstance(context).setFirstRun(false);
+        } else {
+            Config.newInstance(context).setFirstRun(true);
         }
         cursor.close();
     }
@@ -160,23 +162,5 @@ public class DatabaseAssistant {
     public void refreshFavorites(String currencyCode, boolean isFavorite){
         String[] params = new String[]{currencyCode, isFavorite ? String.valueOf(1) : String.valueOf(0)};
         new RefreshFavoritesTask().execute(params);
-    }
-
-    private class FillTableTask extends AsyncTask<Void,Void,Void> {
-        @Override
-        protected Void doInBackground(Void... params) {
-            try {
-                assistant.fillInTable(CurrencyFetcher.getJson(context.getString(R.string.source)));
-            } catch (JSONException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-    }
-
-    public void fillTable(){
-        new FillTableTask().execute();
     }
 }

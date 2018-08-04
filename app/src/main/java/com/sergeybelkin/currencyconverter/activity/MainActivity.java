@@ -1,6 +1,8 @@
 package com.sergeybelkin.currencyconverter.activity;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.DialogFragment;
@@ -16,12 +18,17 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.sergeybelkin.currencyconverter.CurrencyFetcher;
 import com.sergeybelkin.currencyconverter.service.Config;
 import com.sergeybelkin.currencyconverter.fragment.CurrencyPickerDialogFragment;
 import com.sergeybelkin.currencyconverter.database.DatabaseAssistant;
 import com.sergeybelkin.currencyconverter.service.ConnectionDetector;
 import com.sergeybelkin.currencyconverter.service.Formatter;
 import com.sergeybelkin.currencyconverter.R;
+
+import org.json.JSONException;
+
+import java.io.IOException;
 
 import static com.sergeybelkin.currencyconverter.Constants.*;
 
@@ -42,6 +49,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Button b_point;
 
     Handler handler = new Handler();
+    ProgressDialog dialog;
 
     Runnable runnable = new Runnable() {
         @Override
@@ -84,7 +92,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             resultString = new StringBuilder();
         }
 
-        if (firstRun) assistant.fillTable();
+        if (firstRun) new FillTableTask().execute();
     }
 
     @Override
@@ -219,7 +227,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if (!ConnectionDetector.isConnected(this)) {
                     Toast.makeText(this, R.string.msg_update_fail, Toast.LENGTH_SHORT).show();
                 } else {
-                    assistant.fillTable();
+                    new FillTableTask().execute();
                 }
                 break;
         }
@@ -278,5 +286,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         convert();
         refreshTextViews();
+    }
+
+    private class FillTableTask extends AsyncTask<Void,Void,Void> {
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            dialog = new ProgressDialog(MainActivity.this);
+            dialog.setMessage(getString(R.string.msg_updating));
+            dialog.show();
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+                assistant.fillInTable(CurrencyFetcher.getJson(getString(R.string.source)));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            dialog.dismiss();
+            Toast.makeText(getApplicationContext(), getString(R.string.msg_update_success), Toast.LENGTH_SHORT).show();
+        }
     }
 }

@@ -10,6 +10,7 @@
     <string name="source">https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json</string>
 
     <string name="msg_update_fail">Отсутствует подключение к сети</string>
+    <string name="msg_updating">Загрузка данных</string>
     <string name="msg_update_success">Обновление завершено</string>
 
     <string name="AED">Дирхам ОАЭ</string>
