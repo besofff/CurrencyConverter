@@ -20,6 +20,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         database.execSQL("CREATE TABLE "+ TABLE_CURRENCIES +" ("+
                 DB_KEY_ID +" INTEGER PRIMARY KEY AUTOINCREMENT, "+
                 DB_KEY_CC +" TEXT, "+
+                DB_KEY_NAME +" TEXT, "+
                 DB_KEY_RATE +" REAL, "+
                 DB_KEY_DATE +" TEXT, "+
                 DB_KEY_FAVORITE +" INTEGER, "+

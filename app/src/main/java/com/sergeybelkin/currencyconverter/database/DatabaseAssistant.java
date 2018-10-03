@@ -7,15 +7,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 
 import com.sergeybelkin.currencyconverter.Currency;
-import com.sergeybelkin.currencyconverter.CurrencyFetcher;
-import com.sergeybelkin.currencyconverter.R;
 import com.sergeybelkin.currencyconverter.service.Config;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,28 +73,29 @@ public class DatabaseAssistant {
         return rate;
     }
 
-    public void fillInTable(String jsonString) throws JSONException {
-        JSONArray jsonBody = new JSONArray(jsonString);
+    public void fillInTable(List<Currency> currencies){
+
         boolean firstRun = Config.newInstance(context.getApplicationContext()).isFirstRun();
 
         if (firstRun) {
             ContentValues contentValues = new ContentValues();
             contentValues.put(DB_KEY_CC, "UAH");
+            contentValues.put(DB_KEY_NAME, "Українська гривня");
             contentValues.put(DB_KEY_RATE, 1.0);
             contentValues.put(DB_KEY_IMAGE_RES_ID, context.getResources().getIdentifier("_uah", "drawable", context.getPackageName()));
             contentValues.put(DB_KEY_FAVORITE, 1);
             database.insert(TABLE_CURRENCIES, null, contentValues);
         }
 
-        for (int i = 0; i < jsonBody.length(); i++) {
-            JSONObject currencyJsonObject = jsonBody.getJSONObject(i);
-            String currencyCode = currencyJsonObject.getString("cc");
+        for (int i = 0; i < currencies.size(); i++) {
+            Currency currency = currencies.get(i);
+            String currencyCode = currency.getCode();
 
-            if (currencyCode.equals("   ") || currencyCode.equals("XPD") || currencyCode.equals("XPT") ||
-                    currencyCode.equals("XAG") || currencyCode.equals("XDR") || currencyCode.equals("XAU") || currencyCode.equals("UAH")) continue;
+            if (currencyCode.equals("   ") || currencyCode.equals("UAH")) continue;
 
-            double rate = currencyJsonObject.getDouble("rate");
-            String date = currencyJsonObject.getString("exchangedate");
+            String name = currency.getName();
+            double rate = currency.getRate();
+            String date = currency.getDate();
 
             ContentValues contentValues = new ContentValues();
             contentValues.put(DB_KEY_CC, currencyCode);
@@ -109,6 +103,7 @@ public class DatabaseAssistant {
             contentValues.put(DB_KEY_DATE, date);
 
             if (firstRun) {
+                contentValues.put(DB_KEY_NAME, name);
                 contentValues.put(DB_KEY_IMAGE_RES_ID, context.getResources().getIdentifier("_"+currencyCode.toLowerCase(), "drawable", context.getPackageName()));
                 contentValues.put(DB_KEY_FAVORITE, 1);
                 database.insert(TABLE_CURRENCIES, null, contentValues);
@@ -131,14 +126,15 @@ public class DatabaseAssistant {
         List<Currency> currencies = new ArrayList<>();
 
         Cursor cursor = database.query(TABLE_CURRENCIES,
-                new String[]{DB_KEY_CC, DB_KEY_IMAGE_RES_ID, DB_KEY_FAVORITE},
+                new String[]{DB_KEY_CC, DB_KEY_NAME, DB_KEY_IMAGE_RES_ID, DB_KEY_FAVORITE},
                 where, whereArgs, null, null, DB_KEY_FAVORITE +" DESC, "+ DB_KEY_CC);
 
         while(cursor.moveToNext()){
             Currency currency = new Currency();
             String code = cursor.getString(cursor.getColumnIndex(DB_KEY_CC));
+            String name = cursor.getString(cursor.getColumnIndex(DB_KEY_NAME));
             currency.setCode(code);
-            currency.setName(context.getString(context.getResources().getIdentifier(code, "string", context.getPackageName())));
+            currency.setName(name);
             currency.setImageResourceId(cursor.getInt(cursor.getColumnIndex(DB_KEY_IMAGE_RES_ID)));
             currency.setChecked(cursor.getInt(cursor.getColumnIndex(DB_KEY_FAVORITE)) == 1);
             currencies.add(currency);
@@ -148,7 +144,7 @@ public class DatabaseAssistant {
         return currencies;
     }
 
-    private class RefreshFavoritesTask extends AsyncTask<String,Void,Void> {
+    private class UpdateFavoritesTask extends AsyncTask<String,Void,Void> {
         @Override
         protected Void doInBackground(String... params) {
             ContentValues values = new ContentValues();
@@ -159,8 +155,8 @@ public class DatabaseAssistant {
         }
     }
 
-    public void refreshFavorites(String currencyCode, boolean isFavorite){
+    public void updateFavorites(String currencyCode, boolean isFavorite){
         String[] params = new String[]{currencyCode, isFavorite ? String.valueOf(1) : String.valueOf(0)};
-        new RefreshFavoritesTask().execute(params);
+        new UpdateFavoritesTask().execute(params);
     }
 }

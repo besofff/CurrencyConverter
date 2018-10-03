@@ -17,6 +17,7 @@ public class Constants {
     public static final String TABLE_CURRENCIES = "CURRENCIES";
     public static final String DB_KEY_ID = "_id";
     public static final String DB_KEY_CC = "CURRENCY_CODE";
+    public static final String DB_KEY_NAME = "NAME";
     public static final String DB_KEY_RATE = "RATE";
     public static final String DB_KEY_DATE = "DATE";
     public static final String DB_KEY_FAVORITE = "FAVORITE";

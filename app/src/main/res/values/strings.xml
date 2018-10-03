@@ -7,7 +7,7 @@
     <string name="action_deselect_all">Отменить все</string>
 
     <string name="setting_favorites">Избранные валюты</string>
-    <string name="source">https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json</string>
+    <string name="base_url">https://bank.gov.ua/NBUStatService/v1/statdirectory/</string>
 
     <string name="msg_update_fail">Отсутствует подключение к сети</string>
     <string name="msg_updating">Загрузка данных</string>

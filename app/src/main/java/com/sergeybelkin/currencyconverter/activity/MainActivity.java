@@ -18,7 +18,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.sergeybelkin.currencyconverter.CurrencyFetcher;
+import com.sergeybelkin.currencyconverter.Api;
+import com.sergeybelkin.currencyconverter.Currency;
 import com.sergeybelkin.currencyconverter.service.Config;
 import com.sergeybelkin.currencyconverter.fragment.CurrencyPickerDialogFragment;
 import com.sergeybelkin.currencyconverter.database.DatabaseAssistant;
@@ -26,9 +27,13 @@ import com.sergeybelkin.currencyconverter.service.ConnectionDetector;
 import com.sergeybelkin.currencyconverter.service.Formatter;
 import com.sergeybelkin.currencyconverter.R;
 
-import org.json.JSONException;
-
 import java.io.IOException;
+import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 import static com.sergeybelkin.currencyconverter.Constants.*;
 
@@ -47,7 +52,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     ImageButton b_change;
     ImageButton b_delete;
     Button b_point;
-
     Handler handler = new Handler();
     ProgressDialog dialog;
 
@@ -92,7 +96,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             resultString = new StringBuilder();
         }
 
-        if (firstRun) new FillTableTask().execute();
+        if (firstRun) new UpdateDBTask().execute();
     }
 
     @Override
@@ -227,7 +231,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if (!ConnectionDetector.isConnected(this)) {
                     Toast.makeText(this, R.string.msg_update_fail, Toast.LENGTH_SHORT).show();
                 } else {
-                    new FillTableTask().execute();
+                    new UpdateDBTask().execute();
                 }
                 break;
         }
@@ -288,7 +292,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         refreshTextViews();
     }
 
-    private class FillTableTask extends AsyncTask<Void,Void,Void> {
+    private List<Currency> updateDB() throws IOException {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(getString(R.string.base_url))
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        Api api = retrofit.create(Api.class);
+        Call<List<Currency>> call = api.getAllCurrencies();
+        Response<List<Currency>> response = call.execute();
+        return response.body();
+    }
+
+    private class UpdateDBTask extends AsyncTask<Void,Void,Void> {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
@@ -300,10 +315,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         protected Void doInBackground(Void... params) {
             try {
-                assistant.fillInTable(CurrencyFetcher.getJson(getString(R.string.source)));
-            } catch (JSONException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
+                List<Currency> currencies = updateDB();
+                assistant.fillInTable(currencies);
+            }  catch (IOException e) {
                 e.printStackTrace();
             }
             return null;

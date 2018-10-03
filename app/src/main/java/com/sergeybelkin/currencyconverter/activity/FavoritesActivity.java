@@ -2,41 +2,74 @@ package com.sergeybelkin.currencyconverter.activity;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.widget.ListView;
+import android.widget.SimpleAdapter;
 
 import com.sergeybelkin.currencyconverter.Currency;
 import com.sergeybelkin.currencyconverter.database.DatabaseAssistant;
 import com.sergeybelkin.currencyconverter.R;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class FavoritesActivity extends AppCompatActivity {
 
-    private RecyclerView currencyRecyclerView;
     private DatabaseAssistant assistant;
     private List<Currency> currencies;
+    private SimpleAdapter adapter;
+    private List<Map<String, Object>> list;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_favorites);
 
-        currencyRecyclerView = findViewById(R.id.currency_recycler_view);
-        currencyRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-
         assistant = DatabaseAssistant.getInstance(getApplicationContext());
         currencies = assistant.getCurrenciesList(null, null);
-        currencyRecyclerView.setAdapter(new CurrencyAdapter());
+
+        list = new ArrayList<>();
+
+        for (int i = 0; i < currencies.size(); i++){
+            Map<String, Object> m = new HashMap<>();
+            m.put("flag", currencies.get(i).getImageResourceId());
+            m.put("code", currencies.get(i).getCode());
+            m.put("name", currencies.get(i).getName());
+            m.put("isChecked", currencies.get(i).isChecked());
+            list.add(m);
+        }
+
+        String[] from = new String[]{"flag", "code", "name", "isChecked"};
+        int[] to = new int[]{R.id.fav_list_item_flag,
+                R.id.fav_list_item_code,
+                R.id.fav_list_item_name,
+                R.id.fav_list_item_checkbox};
+
+        adapter = new SimpleAdapter(this, list, R.layout.favorite_list_item, from, to);
+        ListView listView = findViewById(R.id.favorites_list_view);
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+                CheckBox checkBox = view.findViewById(R.id.fav_list_item_checkbox);
+                boolean isChecked = (Boolean)list.get(position).get("isChecked");
+                checkBox.setChecked(!isChecked);
+                updateFavorites(position, !isChecked);
+                adapter.notifyDataSetChanged();
+
+            }
+        });
+        listView.setAdapter(adapter);
+    }
+
+    private void updateFavorites(int position, boolean isChecked){
+        list.get(position).put("isChecked", isChecked);
+        assistant.updateFavorites(currencies.get(position).getCode(), isChecked);
     }
 
     @Override
@@ -51,72 +84,19 @@ public class FavoritesActivity extends AppCompatActivity {
 
         switch (id){
             case R.id.action_select_all:
-                for (int i = 0; i < currencies.size(); i++){
-                    currencies.get(i).setChecked(true);
-                    assistant.refreshFavorites(currencies.get(i).getCode(), true);
+                for (int i = 0; i < list.size(); i++){
+                    updateFavorites(i, true);
                 }
                 break;
             case R.id.action_deselect_all:
-                for (int i = 0; i < currencies.size(); i++){
-                    currencies.get(i).setChecked(false);
-                    assistant.refreshFavorites(currencies.get(i).getCode(), false);
+                for (int i = 0; i < list.size(); i++){
+                    updateFavorites(i, false);
                 }
                 break;
         }
-        currencyRecyclerView.getAdapter().notifyDataSetChanged();
+
+        adapter.notifyDataSetChanged();
 
         return super.onOptionsItemSelected(item);
-    }
-
-    private class CurrencyHolder extends RecyclerView.ViewHolder implements CompoundButton.OnCheckedChangeListener {
-
-        private Currency currency;
-        private ImageView currencyFlag;
-        private TextView currencyCode;
-        private TextView currencyName;
-        private CheckBox isChecked;
-
-        CurrencyHolder(View itemView) {
-            super(itemView);
-            currencyFlag = itemView.findViewById(R.id.favorite_list_item_currency_flag);
-            currencyCode = itemView.findViewById(R.id.favorite_list_item_currency_code);
-            currencyName = itemView.findViewById(R.id.favorite_list_item_currency_name);
-            isChecked = itemView.findViewById(R.id.favorite_list_item_currency_checkbox);
-            isChecked.setOnCheckedChangeListener(this);
-        }
-
-        void bindCurrency(Currency currency) {
-            this.currency = currency;
-            currencyFlag.setImageResource(currency.getImageResourceId());
-            currencyCode.setText(currency.getCode());
-            currencyName.setText(currency.getName());
-            isChecked.setChecked(currency.isChecked());
-        }
-
-        @Override
-        public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-            assistant.refreshFavorites(currency.getCode(), isChecked);
-        }
-    }
-
-    private class CurrencyAdapter extends RecyclerView.Adapter<CurrencyHolder> {
-
-        @Override
-        public CurrencyHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            LayoutInflater layoutInflater = LayoutInflater.from(getApplicationContext());
-            View view = layoutInflater.inflate(R.layout.favorite_list_item_currency, parent, false);
-            return new CurrencyHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(final CurrencyHolder holder, int position) {
-            Currency currency = currencies.get(position);
-            holder.bindCurrency(currency);
-        }
-
-        @Override
-        public int getItemCount() {
-            return currencies.size();
-        }
     }
 }
