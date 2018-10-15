@@ -1,8 +1,6 @@
 package com.sergeybelkin.currencyconverter.activity;
 
-import android.app.ProgressDialog;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.DialogFragment;
@@ -20,17 +18,17 @@ import android.widget.Toast;
 
 import com.sergeybelkin.currencyconverter.Api;
 import com.sergeybelkin.currencyconverter.Currency;
+import com.sergeybelkin.currencyconverter.DatabaseHelper;
 import com.sergeybelkin.currencyconverter.service.Config;
-import com.sergeybelkin.currencyconverter.fragment.CurrencyPickerDialogFragment;
-import com.sergeybelkin.currencyconverter.database.DatabaseAssistant;
+import com.sergeybelkin.currencyconverter.CurrencyPickerDialogFragment;
 import com.sergeybelkin.currencyconverter.service.ConnectionDetector;
 import com.sergeybelkin.currencyconverter.service.Formatter;
 import com.sergeybelkin.currencyconverter.R;
 
-import java.io.IOException;
 import java.util.List;
 
 import retrofit2.Call;
+import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -39,21 +37,20 @@ import static com.sergeybelkin.currencyconverter.Constants.*;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, CurrencyPickerDialogFragment.NoticeDialogListener {
 
-    private StringBuilder inputString;
-    private StringBuilder resultString;
-    private DatabaseAssistant assistant;
-    private boolean firstRun;
+    StringBuilder inputString;
+    StringBuilder resultString;
+    DatabaseHelper helper;
+    boolean firstRun;
 
-    LinearLayout convertibleCurrency, resultingCurrency;
-    ImageView convertibleCurrencyFlag, resultingCurrencyFlag;
-    TextView convertibleCurrencyCode, resultingCurrencyCode;
+    LinearLayout sourceCurrency, resultCurrency;
+    ImageView sourceCurrencyFlag, resultCurrencyFlag;
+    TextView sourceCurrencyCode, resultCurrencyCode;
 
     TextView inputTextView, resultTextView;
     ImageButton b_change;
     ImageButton b_delete;
     Button b_point;
     Handler handler = new Handler();
-    ProgressDialog dialog;
 
     Runnable runnable = new Runnable() {
         @Override
@@ -78,9 +75,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        loadPrefs();
+        helper = DatabaseHelper.getInstance(this);
 
-        assistant = DatabaseAssistant.getInstance(this);
+        loadPrefs();
+        if (firstRun) loadUpdates();
 
         inputTextView = findViewById(R.id.input_text_view);
         resultTextView = findViewById(R.id.result_text_view);
@@ -95,8 +93,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             inputString = new StringBuilder();
             resultString = new StringBuilder();
         }
-
-        if (firstRun) new UpdateDBTask().execute();
     }
 
     @Override
@@ -131,30 +127,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void initializeLayouts(){
-        convertibleCurrency = findViewById(R.id.convertible_currency);
-        convertibleCurrency.setOnClickListener(this);
-        resultingCurrency = findViewById(R.id.resulting_currency);
-        resultingCurrency.setOnClickListener(this);
+        sourceCurrency = findViewById(R.id.source_currency);
+        sourceCurrency.setOnClickListener(this);
+        resultCurrency = findViewById(R.id.result_currency);
+        resultCurrency.setOnClickListener(this);
 
-        convertibleCurrencyFlag = (ImageView) convertibleCurrency.getChildAt(0);
-        convertibleCurrencyCode = (TextView) convertibleCurrency.getChildAt(1);
-        resultingCurrencyFlag = (ImageView) resultingCurrency.getChildAt(0);
-        resultingCurrencyCode = (TextView) resultingCurrency.getChildAt(1);
+        sourceCurrencyFlag = (ImageView) sourceCurrency.getChildAt(0);
+        sourceCurrencyCode = (TextView) sourceCurrency.getChildAt(1);
+        resultCurrencyFlag = (ImageView) resultCurrency.getChildAt(0);
+        resultCurrencyCode = (TextView) resultCurrency.getChildAt(1);
 
         Config config = Config.newInstance(getApplicationContext());
-        setResources(convertibleCurrencyFlag, config.getConvertibleFlagId(), convertibleCurrencyCode, config.getConvertibleCode());
-        setResources(resultingCurrencyFlag, config.getResultingFlagId(), resultingCurrencyCode, config.getResultingCode());
+        setResources(sourceCurrencyFlag, config.getConvertibleFlagId(), sourceCurrencyCode, config.getConvertibleCode());
+        setResources(resultCurrencyFlag, config.getResultingFlagId(), resultCurrencyCode, config.getResultingCode());
     }
 
     @Override
     public void onClick(View view) {
-
         switch (view.getId()){
-            case R.id.convertible_currency:
+            case R.id.source_currency:
                 CurrencyPickerDialogFragment fragment = new CurrencyPickerDialogFragment();
                 fragment.show(getSupportFragmentManager(), DIALOG_TAG_FROM);
                 break;
-            case R.id.resulting_currency:
+            case R.id.result_currency:
                 fragment = new CurrencyPickerDialogFragment();
                 fragment.show(getSupportFragmentManager(), DIALOG_TAG_TO);
                 break;
@@ -220,19 +215,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-
-        switch (id){
+        switch (item.getItemId()){
             case R.id.action_settings:
                 Intent intent = new Intent(this, SettingsActivity.class);
                 startActivity(intent);
                 break;
             case R.id.action_refresh:
-                if (!ConnectionDetector.isConnected(this)) {
-                    Toast.makeText(this, R.string.msg_update_fail, Toast.LENGTH_SHORT).show();
-                } else {
-                    new UpdateDBTask().execute();
-                }
+                loadUpdates();
                 break;
         }
 
@@ -246,9 +235,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void convert(){
         if (inputString.length() == 0) return;
 
-        double result = assistant.convert(
-                convertibleCurrencyCode.getText().toString(),
-                resultingCurrencyCode.getText().toString(),
+        double result = helper.getConvertedRate(
+                sourceCurrencyCode.getText().toString(),
+                resultCurrencyCode.getText().toString(),
                 inputString.toString());
         cleanResultString();
         resultString.append(Formatter.doubleToString(result));
@@ -260,11 +249,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         int tempId = config.getConvertibleFlagId();
         String tempCC = config.getConvertibleCode();
 
-        setResources(convertibleCurrencyFlag, config.getResultingFlagId(), convertibleCurrencyCode, config.getResultingCode());
+        setResources(sourceCurrencyFlag, config.getResultingFlagId(), sourceCurrencyCode, config.getResultingCode());
         config.setConvertibleFlagId(config.getResultingFlagId());
         config.setConvertibleCode(config.getResultingCode());
 
-        setResources(resultingCurrencyFlag, tempId, resultingCurrencyCode, tempCC);
+        setResources(resultCurrencyFlag, tempId, resultCurrencyCode, tempCC);
         config.setResultingFlagId(tempId);
         config.setResultingCode(tempCC);
     }
@@ -279,11 +268,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Config config = Config.newInstance(getApplicationContext());
 
         if (dialog.getTag().equals(DIALOG_TAG_FROM)){
-            setResources(convertibleCurrencyFlag, imageResId, convertibleCurrencyCode, currencyCode);
+            setResources(sourceCurrencyFlag, imageResId, sourceCurrencyCode, currencyCode);
             config.setConvertibleFlagId(imageResId);
             config.setConvertibleCode(currencyCode);
         } else {
-            setResources(resultingCurrencyFlag, imageResId, resultingCurrencyCode, currencyCode);
+            setResources(resultCurrencyFlag, imageResId, resultCurrencyCode, currencyCode);
             config.setResultingFlagId(imageResId);
             config.setResultingCode(currencyCode);
         }
@@ -292,42 +281,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         refreshTextViews();
     }
 
-    private List<Currency> updateDB() throws IOException {
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(getString(R.string.base_url))
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
-        Api api = retrofit.create(Api.class);
-        Call<List<Currency>> call = api.getAllCurrencies();
-        Response<List<Currency>> response = call.execute();
-        return response.body();
-    }
+    private void loadUpdates() {
 
-    private class UpdateDBTask extends AsyncTask<Void,Void,Void> {
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            dialog = new ProgressDialog(MainActivity.this);
-            dialog.setMessage(getString(R.string.msg_updating));
-            dialog.show();
-        }
+        if (ConnectionDetector.isConnected(this)){
+            Retrofit retrofit = new Retrofit.Builder()
+                    .baseUrl(getString(R.string.base_url))
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build();
+            Api api = retrofit.create(Api.class);
+            Call<List<Currency>> call = api.getAllCurrencies();
+            call.enqueue(new Callback<List<Currency>>() {
+                @Override
+                public void onResponse(Call<List<Currency>> call, Response<List<Currency>> response) {
+                    helper.updateDB(MainActivity.this, response.body());
+                }
 
-        @Override
-        protected Void doInBackground(Void... params) {
-            try {
-                List<Currency> currencies = updateDB();
-                assistant.fillInTable(currencies);
-            }  catch (IOException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
+                @Override
+                public void onFailure(Call<List<Currency>> call, Throwable t) {
 
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-            dialog.dismiss();
-            Toast.makeText(getApplicationContext(), getString(R.string.msg_update_success), Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            Toast.makeText(this, R.string.msg_update_fail, Toast.LENGTH_SHORT).show();
         }
     }
 }

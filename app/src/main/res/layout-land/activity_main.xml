@@ -27,7 +27,7 @@
             android:orientation="horizontal">
 
             <LinearLayout
-                android:id="@+id/convertible_currency"
+                android:id="@+id/source_currency"
                 android:orientation="horizontal"
                 android:layout_width="0dp"
                 android:layout_weight="1"
@@ -61,7 +61,7 @@
                 android:padding="8dp"/>
 
             <LinearLayout
-                android:id="@+id/resulting_currency"
+                android:id="@+id/result_currency"
                 android:orientation="horizontal"
                 android:layout_width="0dp"
                 android:layout_weight="1"

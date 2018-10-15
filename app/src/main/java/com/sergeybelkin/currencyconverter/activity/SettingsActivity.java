@@ -17,20 +17,16 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
-        settingsFavorites = (TextView) findViewById(R.id.settings_favorites);
+        settingsFavorites = findViewById(R.id.settings_favorites);
         settingsFavorites.setOnClickListener(this);
     }
 
     @Override
     public void onClick(View v) {
-        int id = v.getId();
-        Intent intent;
-        switch (id){
+        switch (v.getId()){
             case R.id.settings_favorites:
-                intent = new Intent(this, FavoritesActivity.class);
-                startActivity(intent);
+                startActivity(new Intent(this, FavoritesActivity.class));
                 break;
-
         }
     }
 }

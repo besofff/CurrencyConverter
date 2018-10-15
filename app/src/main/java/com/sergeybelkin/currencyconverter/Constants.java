@@ -20,6 +20,6 @@ public class Constants {
     public static final String DB_KEY_NAME = "NAME";
     public static final String DB_KEY_RATE = "RATE";
     public static final String DB_KEY_DATE = "DATE";
-    public static final String DB_KEY_FAVORITE = "FAVORITE";
+    public static final String DB_KEY_IS_FAVORITE = "FAVORITE";
     public static final String DB_KEY_IMAGE_RES_ID = "IMAGE_RES_ID";
 }

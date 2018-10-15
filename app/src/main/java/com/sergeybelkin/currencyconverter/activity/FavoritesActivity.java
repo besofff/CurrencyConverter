@@ -11,8 +11,8 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 
 import com.sergeybelkin.currencyconverter.Currency;
-import com.sergeybelkin.currencyconverter.database.DatabaseAssistant;
 import com.sergeybelkin.currencyconverter.R;
+import com.sergeybelkin.currencyconverter.DatabaseHelper;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,18 +21,18 @@ import java.util.Map;
 
 public class FavoritesActivity extends AppCompatActivity {
 
-    private DatabaseAssistant assistant;
-    private List<Currency> currencies;
-    private SimpleAdapter adapter;
-    private List<Map<String, Object>> list;
+    DatabaseHelper helper;
+    List<Currency> currencies;
+    SimpleAdapter adapter;
+    List<Map<String, Object>> list;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_favorites);
 
-        assistant = DatabaseAssistant.getInstance(getApplicationContext());
-        currencies = assistant.getCurrenciesList(null, null);
+        helper = DatabaseHelper.getInstance(this);
+        currencies = helper.getCurrenciesList(null, null);
 
         list = new ArrayList<>();
 
@@ -69,7 +69,7 @@ public class FavoritesActivity extends AppCompatActivity {
 
     private void updateFavorites(int position, boolean isChecked){
         list.get(position).put("isChecked", isChecked);
-        assistant.updateFavorites(currencies.get(position).getCode(), isChecked);
+        helper.updateFavorites(currencies.get(position).getCode(), isChecked);
     }
 
     @Override

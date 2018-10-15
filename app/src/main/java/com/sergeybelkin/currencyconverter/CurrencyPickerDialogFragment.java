@@ -1,4 +1,4 @@
-package com.sergeybelkin.currencyconverter.fragment;
+package com.sergeybelkin.currencyconverter;
 
 import android.app.Activity;
 import android.app.Dialog;
@@ -12,10 +12,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
-
-import com.sergeybelkin.currencyconverter.Currency;
-import com.sergeybelkin.currencyconverter.database.DatabaseAssistant;
-import com.sergeybelkin.currencyconverter.R;
 
 import java.util.List;
 
@@ -45,8 +41,8 @@ public class CurrencyPickerDialogFragment extends DialogFragment {
         RecyclerView currencyRecyclerView = new RecyclerView(getContext());
         currencyRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        DatabaseAssistant assistant = DatabaseAssistant.getInstance(getContext());
-        currencies = assistant.getCurrenciesList(DB_KEY_FAVORITE +" = ?", new String[]{"1"});
+        DatabaseHelper helper = DatabaseHelper.getInstance(getContext());
+        currencies = helper.getCurrenciesList(DB_KEY_IS_FAVORITE +" = ?", new String[]{"1"});
         currencyRecyclerView.setAdapter(new CurrencyAdapter());
 
         return new AlertDialog.Builder(getActivity())
